@@ -1046,6 +1046,7 @@
 
     if (nomesValidos.includes(nome)) {
       dispararConfetes();
+      tocarMusicaFeliz();
       document.getElementById('festaOverlay').classList.add('ativo');
     } else {
       abrirVelorio();
@@ -1155,7 +1156,182 @@
   }
 
   // ============ FESTA ============
+  // ============ MÚSICA FELIZ ============
+  let festaAudio = null;
+
+  function tocarMusicaFeliz() {
+    try {
+      if (festaAudio) { festaAudio.close(); }
+      festaAudio = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) { return; }
+
+    const master = festaAudio.createGain();
+    master.gain.value = 0.55;
+    master.connect(festaAudio.destination);
+
+    // Reverb curto e brilhante
+    function makeReverb(ctx, dur=0.4) {
+      const len = ctx.sampleRate * dur;
+      const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) {
+        const d = buf.getChannelData(c);
+        for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 2);
+      }
+      const conv = ctx.createConvolver();
+      conv.buffer = buf;
+      return conv;
+    }
+
+    const reverb = makeReverb(festaAudio);
+    const rvGain = festaAudio.createGain();
+    rvGain.gain.value = 0.25;
+    reverb.connect(rvGain);
+    rvGain.connect(master);
+
+    function nota(freq, start, dur, vol=0.22, wave='square') {
+      const osc = festaAudio.createOscillator();
+      const g = festaAudio.createGain();
+      const t = festaAudio.currentTime + start;
+      osc.type = wave;
+      osc.frequency.value = freq;
+      // Envelope percussivo
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(vol * 0.6, t + dur * 0.3);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      osc.connect(g);
+      g.connect(master);
+      g.connect(reverb);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
+    }
+
+    function acorde(freqs, start, dur, vol=0.14) {
+      freqs.forEach(f => nota(f, start, dur, vol, 'sine'));
+    }
+
+    // Melodia estilo fanfarra / vencedor em Dó maior
+    // BPM ~140, animado e festivo
+    const bpm = 138;
+    const q = 60 / bpm;
+    const e = q / 2;
+    const s = q / 4;
+
+    // Melodia principal (flautinha / sintetizador brilhante)
+    const mel = [
+      // Frase 1 - subida animada
+      [523.25, 0,       e],    // C5
+      [523.25, e,       s],    // C5
+      [659.25, e+s,     s],    // E5
+      [783.99, e*2,     e],    // G5
+      [1046.5, e*3,     q],    // C6 (pico!)
+      [987.77, e*3+q,   s],    // B5
+      [880.00, e*3+q+s, s],    // A5
+      [783.99, e*4+q,   e],    // G5
+      [659.25, e*5+q,   e],    // E5
+      [783.99, e*6+q,   q*1.5],// G5 sustentado
+
+      // Frase 2 - resposta alegre
+      [659.25, e*6+q*2.5, e],  // E5
+      [659.25, e*7+q*2.5, s],  // E5
+      [783.99, e*7+q*2.5+s, s],// G5
+      [880.00, e*8+q*2.5, e],  // A5
+      [1046.5, e*9+q*2.5, q],  // C6
+      [880.00, e*9+q*3.5, e],  // A5
+      [783.99, e*10+q*3.5, e], // G5
+      [659.25, e*11+q*3.5, q*2],// E5 longa
+
+      // Frase 3 - refrão explosivo
+      [523.25, e*11+q*5.5, s], // C5
+      [659.25, e*11+q*5.5+s, s],// E5
+      [783.99, e*12+q*5.5, s], // G5
+      [1046.5, e*12+q*5.5+s, s],// C6
+      [1318.5, e*13+q*5.5, q], // E6 (nota mais alta!)
+      [1174.7, e*13+q*6.5, e], // D6
+      [1046.5, e*14+q*6.5, e], // C6
+      [987.77, e*15+q*6.5, e], // B5
+      [880.00, e*16+q*6.5, e], // A5
+      [783.99, e*17+q*6.5, q*2],// G5 final
+
+      // Frase 4 - finalização vitoriosa
+      [1046.5, e*17+q*8.5, s], // C6
+      [880.00, e*17+q*8.5+s,s],// A5
+      [783.99, e*18+q*8.5, s], // G5
+      [659.25, e*18+q*8.5+s,s],// E5
+      [523.25, e*19+q*8.5, q*1.5],// C5 (chegada!)
+    ];
+
+    mel.forEach(([f, t, d]) => nota(f, t, d, 0.2, 'square'));
+    // Harmonia (terça acima)
+    mel.forEach(([f, t, d]) => nota(f * 1.26, t + 0.01, d * 0.8, 0.08, 'triangle'));
+
+    // Baixo pulsante estilo 8-bit
+    const baixoNotas = [
+      [130.81, 0,       q],    // C2
+      [130.81, q,       q],
+      [164.81, q*2,     q],    // E2
+      [196.00, q*3,     q],    // G2
+      [130.81, q*4,     q],
+      [130.81, q*5,     q],
+      [174.61, q*6,     q],    // F2
+      [196.00, q*7,     q*2],  // G2
+
+      [130.81, q*9,     q],
+      [130.81, q*10,    q],
+      [164.81, q*11,    q],
+      [196.00, q*12,    q],
+      [220.00, q*13,    q],    // A2
+      [196.00, q*14,    q],
+      [174.61, q*15,    q],
+      [130.81, q*16,    q*2],
+    ];
+    baixoNotas.forEach(([f, t, d]) => nota(f, t, d, 0.18, 'sawtooth'));
+
+    // Percussão sintética (kick + hihat via ruído)
+    function kick(start) {
+      const osc = festaAudio.createOscillator();
+      const g = festaAudio.createGain();
+      const t = festaAudio.currentTime + start;
+      osc.frequency.setValueAtTime(160, t);
+      osc.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+      g.gain.setValueAtTime(0.5, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(g); g.connect(master);
+      osc.start(t); osc.stop(t + 0.25);
+    }
+
+    function hihat(start) {
+      const buf = festaAudio.createBuffer(1, festaAudio.sampleRate*0.05, festaAudio.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+      const src = festaAudio.createBufferSource();
+      const filt = festaAudio.createBiquadFilter();
+      const g = festaAudio.createGain();
+      const t = festaAudio.currentTime + start;
+      filt.type = 'highpass'; filt.frequency.value = 7000;
+      g.gain.setValueAtTime(0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+      src.buffer = buf;
+      src.connect(filt); filt.connect(g); g.connect(master);
+      src.start(t);
+    }
+
+    // Padrão de bateria por 18 compassos
+    for(let b = 0; b < 18; b++) {
+      kick(b * q);
+      kick(b * q + e);
+      hihat(b * q + s);
+      hihat(b * q + e + s);
+      hihat(b * q + q - s);
+    }
+  }
+
+  function pararMusicaFeliz() {
+    if (festaAudio) { try { festaAudio.close(); } catch(e){} festaAudio = null; }
+  }
+
   function fecharFesta() {
+    pararMusicaFeliz();
     document.getElementById('festaOverlay').classList.remove('ativo');
     limparConfetes();
   }
