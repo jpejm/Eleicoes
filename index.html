@@ -972,43 +972,59 @@
 
   // ============ VOTAÇÃO ============
   // ============ BANCO DE VOTOS (localStorage) ============
+  const STORAGE_KEY = 'eleicao_votos_2026';
+
   function salvarVoto(nome) {
-    const votos = JSON.parse(localStorage.getItem('votos_eleicao') || '[]');
-    votos.push({ nome: nome, hora: new Date().toLocaleString('pt-BR') });
-    localStorage.setItem('votos_eleicao', JSON.stringify(votos));
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const votos = raw ? JSON.parse(raw) : [];
+      votos.push({ nome: nome, hora: new Date().toLocaleString('pt-BR') });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(votos));
+    } catch(e) { console.error('Erro ao salvar voto:', e); }
+    atualizarTabela();
+  }
+
+  function resetarVotos() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('votos_eleicao'); // limpa chave antiga também
+    } catch(e) {}
     atualizarTabela();
   }
 
   function atualizarTabela() {
-    const votos = JSON.parse(localStorage.getItem('votos_eleicao') || '[]');
-    const contagem = {};
-    votos.forEach(v => {
-      const key = v.nome.toLowerCase();
-      if (!contagem[key]) contagem[key] = { nome: v.nome, total: 0 };
-      contagem[key].total++;
-    });
-    const ranking = Object.values(contagem).sort((a, b) => b.total - a.total).slice(0, 8);
-    const total = votos.length;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const votos = raw ? JSON.parse(raw) : [];
+      const contagem = {};
+      votos.forEach(v => {
+        const key = v.nome.toLowerCase();
+        if (!contagem[key]) contagem[key] = { nome: v.nome, total: 0 };
+        contagem[key].total++;
+      });
+      const ranking = Object.values(contagem).sort((a, b) => b.total - a.total).slice(0, 8);
+      const total = votos.length;
 
-    const tbody = document.getElementById('tabelaVotosBody');
-    if (!tbody) return;
+      const tbody = document.getElementById('tabelaVotosBody');
+      if (!tbody) return;
 
-    if (ranking.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="2" style="color:#333;text-align:center;font-style:italic;padding:10px;">sem votos ainda</td></tr>';
-    } else {
-      tbody.innerHTML = ranking.map((c, i) => {
-        const ehValido = nomesValidos.map(n => n.toLowerCase()).includes(c.nome.toLowerCase());
-        const cor = ehValido ? '#00c853' : '#cc4444';
-        const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
-        return `<tr>
-          <td style="color:${cor};font-weight:700;padding:4px 8px;">${medalha} ${c.nome}</td>
-          <td style="color:#555;text-align:right;padding:4px 8px;">${c.total}x</td>
-        </tr>`;
-      }).join('');
-    }
+      if (ranking.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="color:#333;text-align:center;font-style:italic;padding:10px;">sem votos ainda</td></tr>';
+      } else {
+        tbody.innerHTML = ranking.map((c, i) => {
+          const ehValido = nomesValidos.map(n => n.toLowerCase()).includes(c.nome.toLowerCase());
+          const cor = ehValido ? '#00c853' : '#cc4444';
+          const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
+          return `<tr>
+            <td style="color:${cor};font-weight:700;padding:4px 8px;">${medalha} ${c.nome}</td>
+            <td style="color:#555;text-align:right;padding:4px 8px;">${c.total}x</td>
+          </tr>`;
+        }).join('');
+      }
 
-    const totalEl = document.getElementById('tabelaTotal');
-    if (totalEl) totalEl.textContent = 'Total: ' + total + ' voto' + (total !== 1 ? 's' : '');
+      const totalEl = document.getElementById('tabelaTotal');
+      if (totalEl) totalEl.textContent = 'Total: ' + total + ' voto' + (total !== 1 ? 's' : '');
+    } catch(e) { console.error('Erro ao atualizar tabela:', e); }
   }
 
   // ============ VOTAÇÃO ============
@@ -1028,8 +1044,7 @@
 
     // Senhas de reset
     if (nome === 'Levi22' || nome === 'Jota22') {
-      localStorage.removeItem('votos_eleicao');
-      atualizarTabela();
+      resetarVotos();
       erro.style.display = 'block';
       erro.style.background = 'linear-gradient(135deg, #1a3a1a, #0a2a0a)';
       erro.style.border = '2px solid #00c853';
