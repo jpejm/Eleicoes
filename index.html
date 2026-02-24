@@ -810,6 +810,17 @@
   </div>
 </div>
 
+<!-- ===== PAINEL DE VOTOS ===== -->
+<div class="overlay" id="painelVotos">
+  <div style="background:#0d0d0d;border:2px solid #1e1e1e;border-radius:20px;padding:32px 28px;max-width:500px;width:92%;text-align:center;animation:popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275);">
+    <p style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:3px;color:#444;margin-bottom:4px;">📊 PAINEL DE VOTOS</p>
+    <p style="color:#2a2a2a;font-size:0.75rem;letter-spacing:2px;margin-bottom:20px;font-style:italic;">— acesso restrito —</p>
+    <div id="painelVotosCorpo" style="text-align:left;"></div>
+    <button onclick="fecharPainelVotos()" style="margin-top:20px;padding:10px 28px;border-radius:8px;border:1px solid #222;background:#111;color:#444;font-family:'Nunito',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;letter-spacing:1px;">✕ Fechar</button>
+  </div>
+</div>
+
+
 <script>
   const nomesValidos = [
     'j','J',
@@ -930,6 +941,80 @@
   }
 
   // ============ VOTAÇÃO ============
+  // ============ BANCO DE VOTOS ============
+  async function salvarVoto(nome) {
+    try {
+      const result = await window.storage.get('votos');
+      const votos = result ? JSON.parse(result.value) : [];
+      votos.push({ nome: nome, hora: new Date().toLocaleString('pt-BR') });
+      await window.storage.set('votos', JSON.stringify(votos), true);
+    } catch(e) { /* sem storage, ignora */ }
+  }
+
+  async function checarSenhaVotos(nome) {
+    if (['votos','Votos','VOTOS'].includes(nome)) {
+      try {
+        const result = await window.storage.get('votos', true);
+        const votos = result ? JSON.parse(result.value) : [];
+        mostrarPainelVotos(votos);
+      } catch(e) {
+        mostrarPainelVotos([]);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function mostrarPainelVotos(votos) {
+    // Contagem por candidato
+    const contagem = {};
+    votos.forEach(v => {
+      const key = v.nome.toLowerCase();
+      if (!contagem[key]) contagem[key] = { nome: v.nome, total: 0 };
+      contagem[key].total++;
+    });
+    const ranking = Object.values(contagem).sort((a,b) => b.total - a.total);
+
+    let html = '';
+    if (votos.length === 0) {
+      html = '<p style="color:#555;font-style:italic;">Nenhum voto registrado ainda.</p>';
+    } else {
+      html = '<div style="margin-bottom:16px;">';
+      ranking.forEach((c, i) => {
+        const medalha = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '▪️';
+        const pct = Math.round((c.total / votos.length) * 100);
+        const ehValido = nomesValidos.includes(c.nome) || nomesValidos.map(n=>n.toLowerCase()).includes(c.nome.toLowerCase());
+        const cor = ehValido ? '#3a6a3a' : '#4a1a1a';
+        const corTexto = ehValido ? '#00c853' : '#cc4444';
+        html += `<div style="background:${cor}22;border:1px solid ${cor};border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="color:${corTexto};font-weight:700;">${medalha} ${c.nome}</span>
+          <span style="color:#888;font-size:0.85rem;">${c.total} voto${c.total>1?'s':''} &nbsp;<span style="color:#555">(${pct}%)</span></span>
+        </div>`;
+      });
+      html += `</div><p style="color:#333;font-size:0.75rem;text-align:right;">Total: ${votos.length} voto${votos.length>1?'s':''}</p>`;
+
+      // Lista completa
+      html += '<details style="margin-top:12px;"><summary style="color:#333;font-size:0.8rem;cursor:pointer;letter-spacing:1px;">VER TODOS OS VOTOS</summary>';
+      html += '<div style="margin-top:8px;max-height:180px;overflow-y:auto;">';
+      votos.slice().reverse().forEach((v, i) => {
+        const ehV = nomesValidos.includes(v.nome) || nomesValidos.map(n=>n.toLowerCase()).includes(v.nome.toLowerCase());
+        html += `<div style="display:flex;justify-content:space-between;padding:5px 8px;border-bottom:1px solid #111;font-size:0.78rem;">
+          <span style="color:${ehV?'#4a8a4a':'#8a3a3a'};">${v.nome}</span>
+          <span style="color:#333;">${v.hora}</span>
+        </div>`;
+      });
+      html += '</div></details>';
+    }
+
+    document.getElementById('painelVotosCorpo').innerHTML = html;
+    document.getElementById('painelVotos').classList.add('ativo');
+  }
+
+  function fecharPainelVotos() {
+    document.getElementById('painelVotos').classList.remove('ativo');
+  }
+
+  // ============ VOTAÇÃO ============
   function votar() {
     const input = document.getElementById('inputVoto');
     const nome = input.value.trim();
@@ -942,14 +1027,19 @@
     }
 
     erro.style.display = 'none';
-    input.value = '';
 
-    if (nomesValidos.includes(nome)) {
-      dispararConfetes();
-      document.getElementById('festaOverlay').classList.add('ativo');
-    } else {
-      abrirVelorio();
-    }
+    // Verificar senha painel
+    checarSenhaVotos(nome).then(isSenha => {
+      if (isSenha) { input.value = ''; return; }
+      input.value = '';
+      salvarVoto(nome);
+      if (nomesValidos.includes(nome)) {
+        dispararConfetes();
+        document.getElementById('festaOverlay').classList.add('ativo');
+      } else {
+        abrirVelorio();
+      }
+    });
   }
 
   // ============ VELÓRIO ============
