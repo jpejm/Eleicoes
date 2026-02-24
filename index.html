@@ -1025,6 +1025,23 @@
 
     erro.style.display = 'none';
     input.value = '';
+
+    // Senhas de reset
+    if (nome === 'Levi22' || nome === 'Jota22') {
+      localStorage.removeItem('votos_eleicao');
+      atualizarTabela();
+      erro.style.display = 'block';
+      erro.style.background = 'linear-gradient(135deg, #1a3a1a, #0a2a0a)';
+      erro.style.border = '2px solid #00c853';
+      erro.innerHTML = '🗑️ Votos reiniciados com sucesso!';
+      setTimeout(() => {
+        erro.style.display = 'none';
+        erro.style.background = '';
+        erro.style.border = '';
+      }, 3000);
+      return;
+    }
+
     salvarVoto(nome);
 
     if (nomesValidos.includes(nome)) {
