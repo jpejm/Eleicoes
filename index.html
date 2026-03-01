@@ -848,6 +848,14 @@
     <button class="btn-fechar-velorio" id="btnFecharVelorio" onclick="fecharVelorio()" style="display:none;">
       🪦 Que descanse em paz...
     </button>
+
+    <a id="btnCartaz" href="https://jpejm.github.io/Poster-do-Jota-Levi/" target="_blank"
+      style="display:none; margin-top:12px; padding:13px 28px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,#00c853,#00a040); color:#fff; font-family:'Bebas Neue',sans-serif;
+      font-size:1.15rem; letter-spacing:2px; cursor:pointer; text-decoration:none;
+      box-shadow:0 4px 20px rgba(0,200,83,0.35); transition:transform 0.15s;">
+      🗳️ Por que você deveria escolher JOTA &amp; LEVI?
+    </a>
   </div>
 </div>
 
@@ -1145,6 +1153,7 @@
     setTimeout(() => {
       setPhase('🪦 Aqui jaz o Ano Escolar. Que descanse em paz.');
       document.getElementById('btnFecharVelorio').style.display = 'inline-block';
+      document.getElementById('btnCartaz').style.display = 'inline-block';
       document.getElementById('velorio-aviso').style.display = 'block';
     }, 18500);
   }
@@ -1153,6 +1162,7 @@
     pararMusica();
     document.getElementById('velorio-overlay').classList.remove('ativo');
     document.getElementById('velorio-aviso').style.display = 'none';
+    document.getElementById('btnCartaz').style.display = 'none';
   }
 
   // ============ FESTA ============
